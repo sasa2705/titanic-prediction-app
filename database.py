@@ -30,35 +30,35 @@ def save_prediction(input_data, survival_prob):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
     try:
-        pclass = int(input_data.loc[0, 'Pclass'])
-        age = float(input_data.loc[0, 'Age'])
-        fare = float(input_data.loc[0, 'Fare'])
-        
+        # Access first row values using dictionary-style access
         values = (
             timestamp,
-            pclass,
-            str(input_data.loc[0, 'Sex']),
-            age,
-            fare,
-            str(input_data.loc[0, 'Embarked']),
-            str(input_data.loc[0, 'Title']),
-            int(input_data.loc[0, 'FamilySize']),
-            int(input_data.loc[0, 'IsAlone']),
+            int(input_data['Pclass'].iloc[0]),
+            str(input_data['Sex'].iloc[0]),
+            float(input_data['Age'].iloc[0]),
+            float(input_data['Fare'].iloc[0]),
+            str(input_data['Embarked'].iloc[0]),
+            str(input_data['Title'].iloc[0]),
+            int(input_data['FamilySize'].iloc[0]),
+            int(input_data['IsAlone'].iloc[0]),
             float(survival_prob)
         )
         
+        # Print debug info before saving
+        print("Attempting to save:", values)
+        
         c.execute('''
-            INSERT INTO predictions (
-                timestamp, pclass, sex, age, fare, embarked, 
-                title, family_size, is_alone, survival_probability
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO predictions 
+            (timestamp, pclass, sex, age, fare, embarked, title, family_size, is_alone, survival_probability)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', values)
         
         conn.commit()
-        print(f"Saved values: pclass={pclass}, age={age}, fare={fare}")  
+        print("Successfully saved prediction to database")
         
     except Exception as e:
         print(f"Error saving prediction: {e}")
+        print("Input data:", input_data)
         conn.rollback()
     finally:
         conn.close()
@@ -66,32 +66,50 @@ def save_prediction(input_data, survival_prob):
 def get_prediction_history():
     conn = sqlite3.connect('predictions.db')
     try:
-        df = pd.read_sql_query('''
-            SELECT 
-                timestamp,
-                CAST(pclass AS INTEGER) as pclass,
-                sex,
-                CAST(age AS FLOAT) as age,
-                CAST(fare AS FLOAT) as fare,
-                embarked,
-                title,
-                family_size,
-                is_alone,
-                survival_probability
-            FROM predictions 
-            ORDER BY timestamp DESC
-        ''', conn)
+        # Simplified query with explicit column selection
+        query = '''
+        SELECT 
+            timestamp,
+            pclass,
+            sex,
+            age,
+            fare,
+            embarked,
+            title,
+            family_size,
+            is_alone,
+            survival_probability
+        FROM predictions 
+        ORDER BY timestamp DESC
+        LIMIT 100
+        '''
         
-        text_columns = ['timestamp', 'sex', 'embarked', 'title']
-        for col in text_columns:
-            df[col] = df[col].astype(str)
+        df = pd.read_sql_query(query, conn)
         
-        df['pclass'] = df['pclass'].astype(int)
-        df['age'] = df['age'].astype(float)
-        df['fare'] = df['fare'].astype(float)
-        df['family_size'] = df['family_size'].astype(int)
-        df['is_alone'] = df['is_alone'].astype(int)
-        df['survival_probability'] = df['survival_probability'].astype(float)
+        if len(df) > 0:
+            # Convert types safely
+            numeric_cols = {
+                'pclass': 'int32',
+                'age': 'float64',
+                'fare': 'float64',
+                'family_size': 'int32',
+                'is_alone': 'int32',
+                'survival_probability': 'float64'
+            }
+            
+            for col, dtype in numeric_cols.items():
+                try:
+                    df[col] = pd.to_numeric(df[col], errors='coerce').astype(dtype)
+                except Exception as e:
+                    print(f"Error converting {col}: {e}")
+            
+            # Convert string columns
+            string_cols = ['timestamp', 'sex', 'embarked', 'title']
+            for col in string_cols:
+                df[col] = df[col].fillna('').astype(str)
+        
+        print(f"Retrieved {len(df)} records from database")
+        print("Sample data:", df.head(1).to_dict('records'))
         
     except Exception as e:
         print(f"Error reading from database: {e}")
