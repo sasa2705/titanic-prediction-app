@@ -4,7 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -23,11 +22,31 @@ wheels/
 
 # Virtual Environment
 venv/
+env/
 ENV/
 
 # IDE
 .idea/
 .vscode/
+*.swp
+*.swo
 
-# Misc
-.DS_Store
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Local development settings
+.env
+.env.local
+
+# Model files
+*.pkl
+*.h5
+*.model
+
+# Data files
+*.csv
+*.xlsx
+*.xls
+
+# Logs
+*.log 
