@@ -29,26 +29,33 @@ def save_prediction(input_data, survival_prob):
     
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    c.execute('''
-        INSERT INTO predictions (
-            timestamp, pclass, sex, age, fare, embarked, 
-            title, family_size, is_alone, survival_probability
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        timestamp,
-        input_data['Pclass'].iloc[0],
-        input_data['Sex'].iloc[0],
-        input_data['Age'].iloc[0],
-        input_data['Fare'].iloc[0],
-        input_data['Embarked'].iloc[0],
-        input_data['Title'].iloc[0],
-        input_data['FamilySize'].iloc[0],
-        input_data['IsAlone'].iloc[0],
-        survival_prob
-    ))
-    
-    conn.commit()
-    conn.close()
+    try:
+        values = (
+            timestamp,
+            int(input_data['Pclass'].values[0]),
+            str(input_data['Sex'].values[0]),
+            float(input_data['Age'].values[0]),
+            float(input_data['Fare'].values[0]),
+            str(input_data['Embarked'].values[0]),
+            str(input_data['Title'].values[0]),
+            int(input_data['FamilySize'].values[0]),
+            int(input_data['IsAlone'].values[0]),
+            float(survival_prob)
+        )
+        
+        c.execute('''
+            INSERT INTO predictions (
+                timestamp, pclass, sex, age, fare, embarked, 
+                title, family_size, is_alone, survival_probability
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', values)
+        
+        conn.commit()
+    except Exception as e:
+        print(f"Error saving prediction: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
 
 def get_prediction_history():
     conn = sqlite3.connect('predictions.db')
