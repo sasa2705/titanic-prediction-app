@@ -52,9 +52,40 @@ def save_prediction(input_data, survival_prob):
 
 def get_prediction_history():
     conn = sqlite3.connect('predictions.db')
-    df = pd.read_sql_query('''
-        SELECT * FROM predictions 
-        ORDER BY timestamp DESC
-    ''', conn)
-    conn.close()
+    try:
+        df = pd.read_sql_query('''
+            SELECT 
+                timestamp,
+                pclass,
+                sex,
+                age,
+                fare,
+                embarked,
+                title,
+                family_size,
+                is_alone,
+                survival_probability
+            FROM predictions 
+            ORDER BY timestamp DESC
+        ''', conn)
+        
+        # Ensure proper string encoding for text columns
+        text_columns = ['timestamp', 'sex', 'embarked', 'title']
+        for col in text_columns:
+            df[col] = df[col].astype(str)
+            
+        # Convert numeric columns
+        df['pclass'] = pd.to_numeric(df['pclass'], errors='coerce')
+        df['age'] = pd.to_numeric(df['age'], errors='coerce')
+        df['fare'] = pd.to_numeric(df['fare'], errors='coerce')
+        df['family_size'] = pd.to_numeric(df['family_size'], errors='coerce')
+        df['is_alone'] = pd.to_numeric(df['is_alone'], errors='coerce')
+        df['survival_probability'] = pd.to_numeric(df['survival_probability'], errors='coerce')
+        
+    except Exception as e:
+        print(f"Error reading from database: {e}")
+        df = pd.DataFrame()  # Return empty DataFrame on error
+    finally:
+        conn.close()
+    
     return df 
