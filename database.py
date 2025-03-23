@@ -30,16 +30,20 @@ def save_prediction(input_data, survival_prob):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
     try:
+        pclass = int(input_data.loc[0, 'Pclass'])
+        age = float(input_data.loc[0, 'Age'])
+        fare = float(input_data.loc[0, 'Fare'])
+        
         values = (
             timestamp,
-            int(input_data['Pclass'].values[0]),
-            str(input_data['Sex'].values[0]),
-            float(input_data['Age'].values[0]),
-            float(input_data['Fare'].values[0]),
-            str(input_data['Embarked'].values[0]),
-            str(input_data['Title'].values[0]),
-            int(input_data['FamilySize'].values[0]),
-            int(input_data['IsAlone'].values[0]),
+            pclass,
+            str(input_data.loc[0, 'Sex']),
+            age,
+            fare,
+            str(input_data.loc[0, 'Embarked']),
+            str(input_data.loc[0, 'Title']),
+            int(input_data.loc[0, 'FamilySize']),
+            int(input_data.loc[0, 'IsAlone']),
             float(survival_prob)
         )
         
@@ -51,6 +55,8 @@ def save_prediction(input_data, survival_prob):
         ''', values)
         
         conn.commit()
+        print(f"Saved values: pclass={pclass}, age={age}, fare={fare}")  
+        
     except Exception as e:
         print(f"Error saving prediction: {e}")
         conn.rollback()
@@ -63,10 +69,10 @@ def get_prediction_history():
         df = pd.read_sql_query('''
             SELECT 
                 timestamp,
-                pclass,
+                CAST(pclass AS INTEGER) as pclass,
                 sex,
-                age,
-                fare,
+                CAST(age AS FLOAT) as age,
+                CAST(fare AS FLOAT) as fare,
                 embarked,
                 title,
                 family_size,
@@ -76,22 +82,20 @@ def get_prediction_history():
             ORDER BY timestamp DESC
         ''', conn)
         
-        # Ensure proper string encoding for text columns
         text_columns = ['timestamp', 'sex', 'embarked', 'title']
         for col in text_columns:
             df[col] = df[col].astype(str)
-            
-        # Convert numeric columns
-        df['pclass'] = pd.to_numeric(df['pclass'], errors='coerce')
-        df['age'] = pd.to_numeric(df['age'], errors='coerce')
-        df['fare'] = pd.to_numeric(df['fare'], errors='coerce')
-        df['family_size'] = pd.to_numeric(df['family_size'], errors='coerce')
-        df['is_alone'] = pd.to_numeric(df['is_alone'], errors='coerce')
-        df['survival_probability'] = pd.to_numeric(df['survival_probability'], errors='coerce')
+        
+        df['pclass'] = df['pclass'].astype(int)
+        df['age'] = df['age'].astype(float)
+        df['fare'] = df['fare'].astype(float)
+        df['family_size'] = df['family_size'].astype(int)
+        df['is_alone'] = df['is_alone'].astype(int)
+        df['survival_probability'] = df['survival_probability'].astype(float)
         
     except Exception as e:
         print(f"Error reading from database: {e}")
-        df = pd.DataFrame()  # Return empty DataFrame on error
+        df = pd.DataFrame()
     finally:
         conn.close()
     
